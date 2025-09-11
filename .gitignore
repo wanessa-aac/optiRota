@@ -1,0 +1,164 @@
+# Arquivos compilados/otimizados (Python/DLL)
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Extensões C
+*.so
+
+# Distribuição/empacotamento
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+#  Normalmente esses arquivos são gerados por um script Python a partir de um modelo
+#  antes do PyInstaller construir o executável, para injetar data/outros dados.
+*.manifest
+*.spec
+
+# Logs do instalador
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Testes/relatórios de cobertura
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+
+# Traduções
+*.mo
+*.pot
+
+# Projetos Django
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+
+# Projetos Flask
+instance/
+.webassets-cache
+
+# Projetos Scrapy
+.scrapy
+
+# Documentação Sphinx
+docs/_build/
+
+# PyBuilder
+target/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IPython
+profile_default/
+ipython_config.py
+
+# pyenv
+.python-version
+
+# pipenv
+#   De acordo com pypa/pipenv#598, é recomendado versionar o Pipfile.lock.
+#   Porém, em colaboração, com dependências específicas de plataforma ou sem
+#   suporte multiplataforma, o pipenv pode instalar dependências incompatíveis
+#   ou não instalar todas as necessárias.
+#Pipfile.lock
+
+# PEP 582; usado por ex.: github.com/David-OConnor/pyflow
+__pypackages__/
+
+# Celery
+celerybeat-schedule
+celerybeat.pid
+
+# Arquivos gerados pelo SageMath
+*.sage.py
+
+# Ambientes
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Configurações do Spyder
+.spyderproject
+.spyproject
+
+# Configurações do Rope
+.ropeproject
+
+# Documentação mkdocs
+/site
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Verificador de tipos Pyre
+.pyre/
+
+# Específico do projeto
+# Arquivos de cache
+cache/
+optiRota/cache/
+*.cache
+
+# Arquivos de log
+logs/
+*.log
+
+# Arquivos de dados (descomente se não quiser versioná-los)
+# data/
+# *.osm
+# *.json
+
+# Arquivos de IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Arquivos gerados pelo SO
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Arquivos temporários
+*.tmp
+*.temp
