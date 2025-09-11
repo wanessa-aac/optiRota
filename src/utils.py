@@ -4,14 +4,14 @@ import tempfile
 def haversine_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     """
     Calcula a distância entre dois pontos geográficos usando a fórmula de Haversine.
-    
+
     Parâmetros:
         lat1, lon1: coordenadas do ponto 1 em graus decimais
         lat2, lon2: coordenadas do ponto 2 em graus decimais
-    
+
     Retorna:
         Distância em quilômetros (float)
-    
+
     Lança:
         ValueError se as coordenadas forem inválidas
     """

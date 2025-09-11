@@ -1,9 +1,15 @@
 # src/graph.py
-import os
-import logging
-import osmnx as ox
 
-# logging
+import os
+import json
+import logging
+import networkx as nx
+from networkx.readwrite import json_graph
+
+from utils import haversine_distance
+from parser_osm import parse_osm  # Import correto do parser local
+
+# Configuração de logs
 os.makedirs("logs", exist_ok=True)
 logging.basicConfig(
     filename="logs/parser.log",
@@ -11,50 +17,68 @@ logging.basicConfig(
     format="%(asctime)s - %(levelname)s - %(message)s"
 )
 
-def parse_place(place_name: str, network_type: str = "drive"):
+def build_graph(parsed_data):
     """
-    Faz o parsing de uma região via Overpass API e retorna nodes e ways.
-    - place_name: nome do bairro/cidade (ex: "Ponta Verde, Maceió, Brasil")
-    - network_type: 'drive', 'walk', 'bike', etc.
+    Constrói um grafo direcionado a partir dos dados parseados.
+    Cada aresta recebe o peso calculado pela distância Haversine.
     """
-    logging.info("Iniciando parsing de %s", place_name)
+    G = nx.DiGraph()
 
-    # baixa grafo direto do OSM (Overpass)
-    G = ox.graph_from_place(place_name, network_type=network_type, simplify=False)
+    # Adiciona nós (cruzamentos)
+    for node_id, data in parsed_data["nodes"].items():
+        G.add_node(node_id, **data)
 
-    # extrair nodes
-    nodes = {
-        nid: {"lat": data.get("y"), "lon": data.get("x")}
-        for nid, data in G.nodes(data=True)
-    }
+    # Adiciona arestas com pesos
+    for way in parsed_data["ways"]:
+        tags = way.get("tags", {})
 
-    # extrair ways
-    ways = []
-    for u, v, k, data in G.edges(keys=True, data=True):
-        ways.append({
-            "from": u,
-            "to": v,
-            "highway": data.get("highway"),
-            "oneway": data.get("oneway"),
-            "length": data.get("length"),
-        })
+        # Filtros de tags
+        if tags.get("access") == "private":
+            continue
 
-    # filtrar nodes significativos (interseções e dead-ends)
-    significant_nodes = {
-        nid: info for nid, info in nodes.items()
-        if G.degree(nid) != 2
-    }
+        oneway = tags.get("oneway") == "yes"
+        u, v = way["from"], way["to"]
 
-    logging.info("Nodes totais: %d | Nodes significativos: %d", len(nodes), len(significant_nodes))
-    logging.info("Ways totais: %d", len(ways))
+        # Confere se ambos os nós existem
+        if u not in parsed_data["nodes"] or v not in parsed_data["nodes"]:
+            continue
 
-    return {"nodes": significant_nodes, "ways": ways}
+        lat1, lon1 = parsed_data["nodes"][u]["lat"], parsed_data["nodes"][u]["lon"]
+        lat2, lon2 = parsed_data["nodes"][v]["lat"], parsed_data["nodes"][v]["lon"]
+
+        # Calcula distância Haversine
+        dist = haversine_distance(lat1, lon1, lat2, lon2)
+
+        # Adiciona aresta u -> v
+        G.add_edge(u, v, weight=dist, highway=tags.get("highway"))
+
+        # Se não for oneway, adiciona v -> u
+        if not oneway:
+            G.add_edge(v, u, weight=dist, highway=tags.get("highway"))
+
+    return G
+
 
 if __name__ == "__main__":
-    place = "Ponta Verde, Maceió, Brasil"
-    try:
-        data = parse_place(place)
-        print(f"Parser finalizado. {len(data['nodes'])} nodes significativos e {len(data['ways'])} ways processados.")
-    except Exception as e:
-        print(f"Erro: {e}")
-        logging.exception("Erro no parse")
+    osm_file = "data/090925maceio_ponta_verde.osm"  # arquivo de entrada
+    if not os.path.exists(osm_file):
+        raise FileNotFoundError(f"Arquivo OSM não encontrado: {osm_file}")
+
+    # Parse do OSM
+    parsed = parse_osm(osm_file)
+
+    # Cria o grafo
+    G = build_graph(parsed)
+
+    # Verifica conectividade
+    strongly_connected = nx.is_strongly_connected(G)
+    logging.info(f"Grafo fortemente conexo? {strongly_connected}")
+
+    # Exporta grafo como JSON
+    os.makedirs("data", exist_ok=True)
+    graph_json = json_graph.node_link_data(G)
+    with open("data/graph.json", "w", encoding="utf-8") as f:
+        json.dump(graph_json, f, ensure_ascii=False, indent=2)
+
+    logging.info(f"Grafo salvo em data/graph.json com {len(G.nodes)} nós e {len(G.edges)} arestas")
+    print("✅ Grafo gerado e exportado em data/graph.json")
