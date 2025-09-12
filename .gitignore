@@ -27,6 +27,9 @@ share/python-wheels/
 *.egg
 MANIFEST
 
+# Logs
+logs/
+
 # PyInstaller
 #  Normalmente esses arquivos são gerados por um script Python a partir de um modelo
 #  antes do PyInstaller construir o executável, para injetar data/outros dados.
@@ -142,6 +145,11 @@ logs/
 # data/
 # *.osm
 # *.json
+
+# Dados locais (não versionar OSM bruto nem exportações)
+#data/*.osm
+#data/*.osm.pbf
+#data/graph.json
 
 # Arquivos de IDE
 .vscode/

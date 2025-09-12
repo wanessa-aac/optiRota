@@ -32,7 +32,7 @@ def haversine_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> fl
     a = math.sin(dlat / 2)**2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2)**2
     c = 2 * math.asin(math.sqrt(a))
 
-    R = 6371  # raio da Terra em km
+    R = 6371000  # raio da Terra em metros
     return R * c
 
 
