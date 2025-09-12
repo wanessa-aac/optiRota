@@ -6,8 +6,8 @@ import logging
 import networkx as nx
 from networkx.readwrite import json_graph
 
-from utils import haversine_distance
-from parser_osm import parse_osm  # Import correto do parser local
+from .utils import haversine_distance
+from .parser_osm import parse_osm  # Import correto do parser local
 
 # Configuração de logs
 os.makedirs("logs", exist_ok=True)
@@ -16,6 +16,53 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s"
 )
+
+def simplify_degree2_directed(G: nx.DiGraph) -> nx.DiGraph:
+    """
+    Contrai nós 'intermediários' cujo conjunto de vizinhos (preds ∪ succs) tem exatamente 2 nós.
+    Preserva direção: se existir a->n e n->b, cria/atualiza a->b com peso somado; idem b->n->a.
+    Remove n. Repete até não haver mais contrações.
+    """
+    H = G.copy()
+    changed = True
+    while changed:
+        changed = False
+        # usamos a visão não-direcionada para detectar grau-2 "topológico"
+        UG = H.to_undirected()
+        # lista para evitar modificar iterável enquanto removemos nós
+        candidates = [n for n, d in UG.degree() if d == 2]
+        for n in candidates:
+            if n not in H:  # já pode ter sido removido
+                continue
+            preds = set(H.predecessors(n))
+            succs = set(H.successors(n))
+            neighbors = preds | succs
+            if len(neighbors) != 2:
+                continue
+            a, b = tuple(neighbors)
+
+            # direção a->n->b
+            if H.has_edge(a, n) and H.has_edge(n, b):
+                w = H[a][n]['weight'] + H[n][b]['weight']
+                if H.has_edge(a, b):
+                    H[a][b]['weight'] = min(H[a][b]['weight'], w)
+                else:
+                    H.add_edge(a, b, weight=w)
+
+            # direção b->n->a
+            if H.has_edge(b, n) and H.has_edge(n, a):
+                w = H[b][n]['weight'] + H[n][a]['weight']
+                if H.has_edge(b, a):
+                    H[b][a]['weight'] = min(H[b][a]['weight'], w)
+                else:
+                    H.add_edge(b, a, weight=w)
+
+            # remover o nó intermediário
+            # (após criar as arestas diretas necessárias)
+            H.remove_node(n)
+            changed = True
+    return H
+
 
 def build_graph(parsed_data):
     """
@@ -55,6 +102,25 @@ def build_graph(parsed_data):
         # Se não for oneway, adiciona v -> u
         if not oneway:
             G.add_edge(v, u, weight=dist, highway=tags.get("highway"))
+
+         # Simplifica o grafo removendo nós intermediários de grau 2
+        try:
+            import osmnx as ox
+            G = ox.utils_graph.simplify_graph(G)
+        except Exception as e:
+            import logging
+            logging.info(f"Não foi possível simplificar com osmnx: {e}")
+
+        # 1) simplificação manual de nós grau-2
+        G = simplify_degree2_directed(G)
+
+        # 2) manter só o maior componente fracamente conexo (remove isolados)
+        if G.number_of_nodes() > 0:
+            wccs = list(nx.weakly_connected_components(G))
+            giant = max(wccs, key=len)
+            G = G.subgraph(giant).copy()
+
+
 
     return G
 
