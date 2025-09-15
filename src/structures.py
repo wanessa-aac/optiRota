@@ -1,6 +1,7 @@
 import heapq
 import logging
 import time
+from typing import Generic, List, Optional, TypeVar, Dict
 
 # Configuração de logging
 logging.basicConfig(
@@ -171,3 +172,95 @@ class PriorityQueue:
     def __repr__(self):
         """Representação string da fila."""
         return f"PriorityQueue({len(self.heap)} elementos)"
+
+
+# Tipos genéricos para Stack/Queue
+T = TypeVar("T")
+
+
+class Stack(Generic[T]):
+    """
+    Implementação simples de uma Pilha (LIFO) usando lista Python.
+
+    - push: adiciona elemento ao topo
+    - pop: remove o elemento do topo
+    - peek: consulta o elemento do topo sem remover
+    - is_empty / size: utilitários
+    """
+
+    def __init__(self) -> None:
+        self._data: List[T] = []
+        logging.info("Stack inicializada")
+
+    def push(self, value: T) -> None:
+        self._data.append(value)
+        logging.debug("Stack.push: %s (tam=%d)", value, len(self._data))
+
+    def pop(self) -> T:
+        if not self._data:
+            logging.warning("Tentativa de pop em Stack vazia")
+            raise IndexError("pop from empty stack")
+        value = self._data.pop()
+        logging.debug("Stack.pop: %s (tam=%d)", value, len(self._data))
+        return value
+
+    def peek(self) -> Optional[T]:
+        if not self._data:
+            return None
+        return self._data[-1]
+
+    def is_empty(self) -> bool:
+        return len(self._data) == 0
+
+    def size(self) -> int:
+        return len(self._data)
+
+    def __repr__(self) -> str:
+        return f"Stack({len(self._data)} elementos)"
+
+
+def reconstruct_path_with_stack(predecessors: Dict[T, Optional[T]], start: T, end: T) -> List[T]:
+    """
+    Reconstrói o caminho de start -> end usando uma Pilha (LIFO) e o mapa de predecessores.
+
+    - Segue ponteiros de predecessor a partir de end até alcançar start, empilhando nós.
+    - Desempilha para produzir a sequência na ordem correta (start -> ... -> end).
+
+    Raises:
+        ValueError: se a cadeia de predecessores não alcança start a partir de end.
+    """
+    stack: Stack[T] = Stack()
+
+    current: Optional[T] = end
+    steps = 0
+    max_hops = len(predecessors) + 1  # trava de segurança
+
+    while current is not None and steps <= max_hops:
+        stack.push(current)
+        if current == start:
+            break
+        current = predecessors.get(current)
+        steps += 1
+
+    if stack.is_empty() or stack.peek() != start:
+        raise ValueError("Cadeia de predecessores não alcança o nó inicial para reconstrução do caminho")
+
+    path: List[T] = []
+    while not stack.is_empty():
+        path.append(stack.pop())
+
+    return path
+
+
+def reconstruct_path(predecessors: Dict[T, Optional[T]], start: T, end: T) -> List[T]:
+    """
+    Versão pública simples para reconstruir caminho utilizando uma Pilha (LIFO).
+
+    Implementada com list.append/pop via `Stack`, tratando casos de pilha vazia
+    e cadeias inválidas de predecessores.
+    """
+    try:
+        return reconstruct_path_with_stack(predecessors, start, end)
+    except IndexError as exc:
+        # Propaga erro de pilha vazia com mensagem amigável
+        raise ValueError("Falha ao reconstruir caminho: pilha vazia") from exc

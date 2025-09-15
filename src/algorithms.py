@@ -4,10 +4,10 @@ from typing import Dict, List, Tuple, Optional, Any
 from collections import defaultdict
 try:
     # Execução como módulo do pacote src
-    from .structures import PriorityQueue
+    from .structures import PriorityQueue, reconstruct_path
 except Exception:
     # Execução direta a partir da raiz do projeto
-    from structures import PriorityQueue
+    from structures import PriorityQueue, reconstruct_path
 
 # Configuração de logging
 logging.basicConfig(
@@ -105,8 +105,8 @@ def dijkstra(graph, start, end, max_iterations: int = 10000) -> Dict[str, Any]:
     if distances[end] == math.inf:
         raise RuntimeError(f"Não existe caminho de '{start}' para '{end}'. Grafo pode ser desconexo.")
     
-    # Reconstrói o caminho
-    path = _reconstruct_path(predecessors, start, end)
+    # Reconstrói o caminho usando Pilha (estruturas.reconstruct_path)
+    path = reconstruct_path(predecessors, start, end)
     
     result = {
         'distance': distances[end],
@@ -121,32 +121,6 @@ def dijkstra(graph, start, end, max_iterations: int = 10000) -> Dict[str, Any]:
                 distances[end], path, iteration_count)
     
     return result
-
-
-def _reconstruct_path(predecessors: Dict, start: str, end: str) -> List[str]:
-    """
-    Reconstrói o caminho mais curto usando o dicionário de predecessores.
-    
-    Args:
-        predecessors: Dicionário de predecessores
-        start: Nó de origem
-        end: Nó de destino
-        
-    Returns:
-        Lista de nós do caminho mais curto
-    """
-    path = []
-    current = end
-    
-    # Reconstrói o caminho do fim para o início
-    while current is not None:
-        path.append(current)
-        current = predecessors[current]
-    
-    # Inverte para obter o caminho do início para o fim
-    path.reverse()
-    
-    return path
 
 
 def dijkstra_all_pairs(graph, max_iterations: int = 10000) -> Dict[str, Dict[str, Any]]:
