@@ -45,5 +45,5 @@ if __name__ == "__main__":
 
     # Salva em arquivo temporário para validação
     with tempfile.NamedTemporaryFile("w", delete=False, suffix=".txt") as tmp:
-        tmp.write(f"Distância SP-RJ: {distancia:.2f} km\n")
+        tmp.write(f"Distância SP-RJ: {distancia:.2f} m\n")
         print(f"Resultado salvo em: {tmp.name}")

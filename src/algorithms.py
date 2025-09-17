@@ -15,7 +15,7 @@ logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 
-def dijkstra(graph, start, end, max_iterations: int = 10000) -> Dict[str, Any]:
+def dijkstra(graph, start, end: Optional[str] = None, max_iterations: int = 10000) -> Dict[str, Any]:
     """
     Implementa o algoritmo de Dijkstra para encontrar o caminho mais curto entre dois nós.
     
@@ -43,7 +43,7 @@ def dijkstra(graph, start, end, max_iterations: int = 10000) -> Dict[str, Any]:
     # Validação de entrada
     if start not in graph.nodes:
         raise ValueError(f"Nó de origem '{start}' não existe no grafo")
-    if end not in graph.nodes:
+    if end is not None and end not in graph.nodes:
         raise ValueError(f"Nó de destino '{end}' não existe no grafo")
     
     # Inicialização
@@ -101,6 +101,10 @@ def dijkstra(graph, start, end, max_iterations: int = 10000) -> Dict[str, Any]:
     if iteration_count >= max_iterations:
         raise RuntimeError(f"Algoritmo excedeu {max_iterations} iterações. Possível loop infinito.")
     
+    if end is None:
+    # Retorna apenas o dicionário de distâncias (igual ao networkx)
+        return distances
+
     # Verifica se o destino foi alcançado
     if distances[end] == math.inf:
         raise RuntimeError(f"Não existe caminho de '{start}' para '{end}'. Grafo pode ser desconexo.")
