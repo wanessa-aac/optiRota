@@ -1,6 +1,8 @@
 import heapq
 import logging
 import time
+import queue
+import threading
 from typing import Generic, List, Optional, TypeVar, Dict
 
 # Configuração de logging
@@ -218,6 +220,52 @@ class Stack(Generic[T]):
     def __repr__(self) -> str:
         return f"Stack({len(self._data)} elementos)"
 
+class FIFOQueue(Generic[T]):
+    """
+    Implementação de uma fila FIFO (First In, First Out) usando queue.Queue.
+
+    - enqueue: adiciona no final
+    - dequeue: remove do início
+    - is_empty / size: utilitários
+    """
+
+    def __init__(self, maxsize: int = 0) -> None:
+        """
+        Cria uma fila FIFO.
+
+        Args:
+            maxsize (int): Tamanho máximo da fila. Se 0, é ilimitada.
+        """
+        self._queue = queue.Queue(maxsize=maxsize)
+        self._lock = threading.Lock()
+        logging.info("FIFOQueue inicializada (maxsize=%d)", maxsize)
+
+    def enqueue(self, item: T) -> None:
+        """Adiciona um item ao final da fila."""
+        with self._lock:
+            self._queue.put(item)
+            logging.debug("FIFOQueue.enqueue: %s (tam=%d)", item, self.size())
+
+    def dequeue(self) -> T:
+        """
+        Remove e retorna o item do início da fila.
+        Se a fila estiver vazia, levanta queue.Empty.
+        """
+        with self._lock:
+            item = self._queue.get_nowait()
+            logging.debug("FIFOQueue.dequeue: %s (tam=%d)", item, self.size())
+            return item
+
+    def is_empty(self) -> bool:
+        """Retorna True se a fila estiver vazia."""
+        return self._queue.empty()
+
+    def size(self) -> int:
+        """Retorna o número de elementos na fila."""
+        return self._queue.qsize()
+
+    def __repr__(self) -> str:
+        return f"FIFOQueue({self.size()} elementos)"
 
 def reconstruct_path_with_stack(predecessors: Dict[T, Optional[T]], start: T, end: T) -> List[T]:
     """
