@@ -2,34 +2,3 @@
 # Adicione aqui quaisquer dependências específicas para desenvolvimento e testes
 pytest
 pytest-cov
-
-"""
-python run_tests.py
-
- O que faz:
-    Executa pytest com cobertura (--cov=src).
-    Mostra saída detalhada no terminal.
-    Gera os arquivos:
-    logs/test_coverage.log → log completo
-    logs/test_summary.txt → resumo do tipo 16 passed, 1 skipped in 12.20s
-
-################################################
-python run_tests.py fast
-
- O que faz:
-    Executa apenas pytest -v.
-    Mais rápido, útil para o dia a dia.
-    Não gera cobertura, só mostra os testes.
-
-##############################################
-
-python run_tests.py ci
-
- O que faz:
-    Executa pytest com cobertura, mas não imprime no terminal (para pipelines automáticas).
-    Salva apenas os arquivos de log:
-    logs/test_coverage.log
-    logs/test_summary.txt
-    Esse é o que você usaria em GitHub Actions, GitLab CI, ou qualquer servidor de integração contínua.
-
-"""
