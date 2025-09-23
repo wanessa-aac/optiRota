@@ -2,3 +2,4 @@
 # Adicione aqui quaisquer dependências específicas para desenvolvimento e testes
 pytest
 pytest-cov
+networkx
