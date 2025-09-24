@@ -1,3 +1,5 @@
+import networkx as nx
+import queue
 import math
 import logging
 from typing import Dict, List, Tuple, Optional, Any
@@ -340,3 +342,53 @@ def get_shortest_path_info(result: Dict[str, Any]) -> str:
                 f"Caminho: {path_str}\n"
                 f"Iterações: {result['iterations']}\n"
                 f"Nós visitados: {result['nodes_visited']}")
+
+def vrp_solver(graph, orders, capacity: int = 100, time_window: Tuple[int, int] = (9, 11)) -> List[Any]:
+    logging.info("Iniciando VRP Solver com %d pedidos", len(orders))
+
+    # Fila FIFO com apenas pedidos dentro da janela de tempo
+    fifo = queue.Queue()
+    for order in orders:
+        if time_window[0] <= order["time"] <= time_window[1]:
+            fifo.put(order)
+
+    route = [0]         # depósito = nó 0
+    current_node = 0
+
+    current_capacity = capacity
+
+    while not fifo.empty():
+        candidates = []
+        # Coleta todos da fila para filtrar
+        for _ in range(fifo.qsize()):
+            order = fifo.get()
+            if order["weight"] <= current_capacity:
+                candidates.append(order)
+            else:
+                fifo.put(order)  # volta para a fila se não couber agora
+
+        if not candidates:
+            break
+
+        # Escolhe vizinho mais próximo pelo peso da aresta
+        next_order = min(
+            candidates,
+            key=lambda o: nx.shortest_path_length(
+                graph, current_node, o["node"], weight="weight"
+            )
+        )
+
+        # Atualiza rota
+        route.append(next_order["node"])
+        current_capacity -= next_order["weight"]
+        current_node = next_order["node"]
+
+        # Recoloca candidatos restantes na fila
+        for order in candidates:
+            if order["id"] != next_order["id"]:
+                fifo.put(order)
+
+    # Volta para o depósito
+    route.append(0)
+    logging.info("Rota finalizada: %s", route)
+    return route
