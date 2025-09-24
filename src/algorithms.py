@@ -1,5 +1,7 @@
 import os
 import csv
+import networkx as nx
+import queue
 import math
 import logging
 import json
@@ -107,7 +109,7 @@ def dijkstra(graph, start, end: Optional[str] = None, max_iterations: int = 1000
         raise RuntimeError(f"Algoritmo excedeu {max_iterations} iterações. Possível loop infinito.")
     
     if end is None:
-    # Retorna apenas o dicionário de distâncias (igual ao networkx)
+        # Retorna apenas o dicionário de distâncias (igual ao networkx)
         return distances
 
     # Verifica se o destino foi alcançado
@@ -344,7 +346,6 @@ def get_shortest_path_info(result: Dict[str, Any]) -> str:
                 f"Iterações: {result['iterations']}\n"
                 f"Nós visitados: {result['nodes_visited']}")
 
-
 # === OPT-17: Pré-cálculo VRP (A*) ===
 # Objetivo: pré-computar distâncias dirigidas entre pares de nós usando A* e salvar em CSV (data/distances.csv)
 # Notas:
@@ -424,7 +425,7 @@ def precompute_distances(
     written_now = 0
     buffer_rows: list[dict[str, Any]] = []
 
-    # 4) Cache em mémoria (mesma execução)
+    # 4) Cache em memória (mesma execução)
     mem_cache: dict[tuple[str, str], tuple[Optional[float], Optional[list[str]]]] = {}
     pairs = [(u, v) for u in nodes_sel for v in nodes_sel if u != v]
     logging.info("Total de pares a avaliar: %d", len(pairs))
@@ -482,3 +483,53 @@ def precompute_distances(
             logging.info("Gravadas %d linhas (final)", written_now)
     logging.info("Finalizado. Novas linhas gravadas: %d | CSV: %s", written_now, out_path)
     return written_now
+
+def vrp_solver(graph, orders, capacity: int = 100, time_window: Tuple[int, int] = (9, 11)) -> List[Any]:
+    logging.info("Iniciando VRP Solver com %d pedidos", len(orders))
+
+    # Fila FIFO com apenas pedidos dentro da janela de tempo
+    fifo = queue.Queue()
+    for order in orders:
+        if time_window[0] <= order["time"] <= time_window[1]:
+            fifo.put(order)
+
+    route = [0]         # depósito = nó 0
+    current_node = 0
+
+    current_capacity = capacity
+
+    while not fifo.empty():
+        candidates = []
+        # Coleta todos da fila para filtrar
+        for _ in range(fifo.qsize()):
+            order = fifo.get()
+            if order["weight"] <= current_capacity:
+                candidates.append(order)
+            else:
+                fifo.put(order)  # volta para a fila se não couber agora
+
+        if not candidates:
+            break
+
+        # Escolhe vizinho mais próximo pelo peso da aresta
+        next_order = min(
+            candidates,
+            key=lambda o: nx.shortest_path_length(
+                graph, current_node, o["node"], weight="weight"
+            )
+        )
+
+        # Atualiza rota
+        route.append(next_order["node"])
+        current_capacity -= next_order["weight"]
+        current_node = next_order["node"]
+
+        # Recoloca candidatos restantes na fila
+        for order in candidates:
+            if order["id"] != next_order["id"]:
+                fifo.put(order)
+
+    # Volta para o depósito
+    route.append(0)
+    logging.info("Rota finalizada: %s", route)
+    return route</parameter

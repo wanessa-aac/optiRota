@@ -1,4 +1,6 @@
 import math
+import os
+import random
 import tempfile
 
 def haversine_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
@@ -90,6 +92,73 @@ def euclidean_distance(node1, node2) -> float:
     
     return distance
 
+
+def plot_dijkstra_vs_a(output_path: str = "docs/dijkstra_vs_a.png",
+                       min_nodes: int = 100,
+                       max_nodes: int = 5000,
+                       steps: int = 20,
+                       repeats: int = 3) -> str:
+    """
+    Gera e salva um gráfico de comparação de desempenho (tempo vs número de nós)
+    entre Dijkstra e A* usando dados simulados em escala linear.
+
+    Args:
+        output_path: Caminho do arquivo de imagem a ser salvo.
+        min_nodes: Número mínimo de nós.
+        max_nodes: Número máximo de nós.
+        steps: Quantidade de pontos entre min e max (inclusive extremos).
+        repeats: Número de repetições para reduzir ruído nos dados simulados.
+
+    Returns:
+        Caminho absoluto do arquivo salvo.
+    """
+    # Import local para evitar dependência quando a função não é usada
+    import matplotlib.pyplot as plt
+
+    if steps < 2:
+        steps = 2
+
+    # Gera tamanhos de grafo uniformemente espaçados
+    node_counts = [int(min_nodes + i * (max_nodes - min_nodes) / (steps - 1)) for i in range(steps)]
+
+    # Parâmetros de tempo sintéticos (segundos) ~ O(V log V) para grafos esparsos
+    # A*: fator menor devido à heurística admissível
+    base_a = 2.0e-6  # constante para Dijkstra
+    base_b = 1.2e-6  # constante para A*
+
+    def simulate_time(constant: float, n: int) -> float:
+        # Tempo ~ c * n * log2(n) com pequeno ruído gaussiano
+        noiseless = constant * n * max(1.0, math.log2(max(2, n)))
+        noise = random.gauss(0.0, noiseless * 0.05)
+        return max(0.0, noiseless + noise)
+
+    dijkstra_times = []
+    astar_times = []
+    for n in node_counts:
+        # Média de repetições para suavizar
+        d_mean = sum(simulate_time(base_a, n) for _ in range(repeats)) / repeats
+        a_mean = sum(simulate_time(base_b, n) for _ in range(repeats)) / repeats
+        dijkstra_times.append(d_mean)
+        astar_times.append(a_mean)
+
+    # Plot
+    plt.figure(figsize=(8, 5))
+    plt.plot(node_counts, dijkstra_times, label="Dijkstra (simulado)", marker="o", linewidth=2)
+    plt.plot(node_counts, astar_times, label="A* (simulado)", marker="s", linewidth=2)
+    plt.xlabel("Número de nós")
+    plt.ylabel("Tempo (s)")
+    plt.title("Desempenho: Dijkstra vs A* (escala linear)")
+    plt.grid(True, linestyle=":", alpha=0.6)
+    plt.legend()
+    plt.tight_layout()
+
+    # Garante diretório de saída
+    out_dir = os.path.dirname(output_path) or "."
+    os.makedirs(out_dir, exist_ok=True)
+
+    plt.savefig(output_path, dpi=160)
+    plt.close()
+    return os.path.abspath(output_path)
 
 if __name__ == "__main__":
     # Teste: São Paulo (SP) -> Rio de Janeiro (RJ)
