@@ -1,6 +1,9 @@
+import os
+import csv
 import math
 import logging
-from typing import Dict, List, Tuple, Optional, Any
+import json
+from typing import Dict, List, Tuple, Optional, Any, Set, Iterable
 from collections import defaultdict
 try:
     # Execução como módulo do pacote src
@@ -340,3 +343,142 @@ def get_shortest_path_info(result: Dict[str, Any]) -> str:
                 f"Caminho: {path_str}\n"
                 f"Iterações: {result['iterations']}\n"
                 f"Nós visitados: {result['nodes_visited']}")
+
+
+# === OPT-17: Pré-cálculo VRP (A*) ===
+# Objetivo: pré-computar distâncias dirigidas entre pares de nós usando A* e salvar em CSV (data/distances.csv)
+# Notas:
+#  - Usa cache persistente (reaproveita o CSV existente) e um cache em memória simples (dict).
+#  - Amostra 10–20 nós por padrão para não estourar memória/tempo durante o desenvolvimento.
+#  - Formato do CSV (long format): source,target,distance_meters,path_nodes(JSON)
+
+def _ensure_data_dir(path: str) -> None:
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+
+def _load_done_pairs(cache_path: str) -> Set[Tuple[str, str]]:
+    """
+    Lê data/distances.csv e retorna um set com (source, target) já calculados.
+    """
+    done: Set[tuple[str, str]] = set()
+    if not os.path.exists(cache_path):
+        return done
+    try:
+        with open(cache_path, "r", newline="", encoding="utf-8") as f:
+            rdr = csv.DictReader(f)
+            for row in rdr:
+                s, t = row.get("source"), row.get("target")
+                if s and t:
+                    done.add((s, t))
+    except Exception as e:
+        logging.error("Falha ao ler cache CSV (%s): %s", cache_path, e)
+    return done
+
+def precompute_distances(
+    graph, 
+    nodes: Optional[Iterable[str]] = None,
+    k_sample: int = 20,
+    out_path: str = "data/distances.csv",
+    resume: bool = True,
+    chunk_size: int = 200,
+    max_iterations: int = 10000,
+) -> int:
+    """
+    Pré-computa distâncias dirigidas entre pares de nós usando A* e salva em CSV.
+
+    Args:
+      graph: DiGraph com 'lat'/'lon' nos nós e 'weight' nas arestas
+      nodes: subconjunto de nós (ids). Se None, amostra k_sample nós aleatórios.
+      k_sample: tamanho da amostra quando nodes=None
+      out_path: caminho do CSV de saída (data/distances.csv)
+      resume: se True, pula pares já presentes no CSV (retomada)
+      chunk_size: quantas linhas escrever por flush
+      max_iterations: limite de iterações do A*
+
+    Returns:
+      Quantidade de NOVAS linhas gravadas no CSV.
+    """
+    logging.info("Iniciando pré-calculo de distâncias com A*")
+    _ensure_data_dir(out_path)
+
+# 1) Seleção de nós
+    if nodes is None:
+        all_nodes = list(graph.nodes)
+        if not all_nodes:
+            raise ValueError("Grafo vazio - nenhum nó disponível")
+        k = min(k_sample, len(all_nodes))
+        # amostra simples para não explodir custo durante desenvolvimento
+        import random
+        nodes_sel = list(map(str, random.sample(all_nodes, k)))
+        logging.info("Amostra automatica de %d nós", k)
+    else:
+        nodes_sel = [str(n) for n in nodes]
+        logging.info("Usando %d nós fornecidos", len(nodes_sel))
+
+    # 2) Cache persistente (retomada)
+    done_pairs = _load_done_pairs(out_path) if resume else set()
+    if resume:
+        logging.info("Pares já computados no CSV (cache): %d", len(done_pairs))
+
+    # 3) CSV (append) e cabeçalho
+    file_exists = os.path.exists(out_path)
+    written_now = 0
+    buffer_rows: list[dict[str, Any]] = []
+
+    # 4) Cache em mémoria (mesma execução)
+    mem_cache: dict[tuple[str, str], tuple[Optional[float], Optional[list[str]]]] = {}
+    pairs = [(u, v) for u in nodes_sel for v in nodes_sel if u != v]
+    logging.info("Total de pares a avaliar: %d", len(pairs))
+
+    fieldnames = ["source", "target", "distance_meters", "path_nodes"]
+
+    try:
+        f = open(out_path, "a", newline="", encoding="utf-8")
+    except Exception as e:
+        logging.error("Não foi possível abrir o arquivo de saída: %s", e)
+        raise
+    with f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        if not file_exists:
+            writer.writeheader()
+
+        for idx, (u, v) in enumerate(pairs, start=1):
+            if resume and (u, v) in done_pairs:
+                continue
+            if (u, v) in mem_cache:
+                dist, path = mem_cache[(u, v)]
+            else:
+                # 5) Executa A* com tratamento de erros
+                try:
+                    res = a_star(graph, u, v, max_iterations=max_iterations)
+                    dist = float(res["distance"])
+                    path = [str(n) for n in res["path"]]
+                except Exception as e:
+                    logging.debug("Sem caminho ou falha A*: %s -> %s (%s)", u, v, e)
+                    dist, path = None, None
+                mem_cache[(u, v)] = (dist, path)
+            
+            row = {
+                "source": u,
+                "target": v,
+                "distance_meters": "NA" if dist is None else round(dist, 6),
+                "path_nodes": "NA" if path is None else json.dumps(path, ensure_ascii=False),
+            }
+            buffer_rows.append(row)
+
+            # 6) Flush por chunk
+            if len(buffer_rows) >= chunk_size:
+                writer.writerows(buffer_rows)
+                f.flush()
+                written_now += len(buffer_rows)
+                buffer_rows.clear()
+                logging.info("Gravadas %d linhas (parcial)", written_now)
+            
+        # flush final
+        if buffer_rows:
+            writer.writerows(buffer_rows)
+            f.flush()
+            written_now += len(buffer_rows)
+            buffer_rows.clear()
+            logging.info("Gravadas %d linhas (final)", written_now)
+    logging.info("Finalizado. Novas linhas gravadas: %d | CSV: %s", written_now, out_path)
+    return written_now

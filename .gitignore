@@ -145,7 +145,10 @@ logs/
 # data/
 # *.osm
 # *.json
+data/distances.csv
 
+
+data
 # Dados locais (não versionar OSM bruto nem exportações)
 #data/*.osm
 #data/*.osm.pbf
