@@ -147,4 +147,4 @@ if __name__ == "__main__":
         json.dump(graph_json, f, ensure_ascii=False, indent=2)
 
     logging.info(f"Grafo salvo em data/graph.json com {len(G.nodes)} nós e {len(G.edges)} arestas")
-    print("✅ Grafo gerado e exportado em data/graph.json")
+    print("Grafo gerado e exportado em data/graph.json")
