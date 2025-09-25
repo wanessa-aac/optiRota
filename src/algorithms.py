@@ -490,7 +490,25 @@ def vrp_solver(graph, orders, capacity: int = 100, time_window: Tuple[int, int] 
     # Fila FIFO com apenas pedidos dentro da janela de tempo
     fifo = queue.Queue()
     for order in orders:
-        if time_window[0] <= order["time"] <= time_window[1]:
+        # Aceita tanto "time" quanto "time_window" para compatibilidade
+        tw = order.get("time", order.get("time_window"))
+        if isinstance(tw, tuple) and len(tw) == 2:
+            start, end = tw
+            # Pedido é valido se a janela dele estiver dentro da janela global
+            if time_window[0] <= start and end <= time_window[1]:
+                fifo.put(order)
+            else:
+                # Fora da janela global -> ignora
+                #(se você quiser logar aqui, pode usar logging.warning)
+                pass
+        elif isinstance(tw, (int, float)):
+            # Caso raro: tempo único (instante)
+            if time_window[0] <= tw <= time_window[1]:
+                fifo.put(order)
+            else:
+                pass
+        else:
+            # Sem informação de tempo; opcional: aceita ou rejeita
             fifo.put(order)
 
     route = [0]         # depósito = nó 0
@@ -532,4 +550,4 @@ def vrp_solver(graph, orders, capacity: int = 100, time_window: Tuple[int, int] 
     # Volta para o depósito
     route.append(0)
     logging.info("Rota finalizada: %s", route)
-    return route</parameter
+    return route
