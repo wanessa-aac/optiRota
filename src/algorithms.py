@@ -2,6 +2,7 @@ import os
 import csv
 import networkx as nx
 import queue
+import time
 import math
 import logging
 import json
@@ -484,70 +485,136 @@ def precompute_distances(
     logging.info("Finalizado. Novas linhas gravadas: %d | CSV: %s", written_now, out_path)
     return written_now
 
-def vrp_solver(graph, orders, capacity: int = 100, time_window: Tuple[int, int] = (9, 11)) -> List[Any]:
+def vrp_solver(
+    graph: nx.DiGraph,
+    orders: List[Dict],
+    capacity: int = 100,
+    time_window: Tuple[int, int] = (9, 11),
+    distance_matrix: Optional[Dict[int, Dict[int, float]]] = None,
+    depot_node: int = 0
+) -> Dict[str, Any]:
+    """
+    Vehicle Routing Problem (VRP) solver com janelas de tempo (VRPTW simplificado).
+    Usa matriz de distâncias pré-computada (A*) + heurística Vizinho Mais Próximo com Inserção.
+    """
+
+    start_time = time.time()
     logging.info("Iniciando VRP Solver com %d pedidos", len(orders))
 
-    # Fila FIFO com apenas pedidos dentro da janela de tempo
-    fifo = queue.Queue()
+    # -------------------------------
+    # 1. Pré-processamento dos pedidos
+    # -------------------------------
+    valid_orders = []
     for order in orders:
-        # Aceita tanto "time" quanto "time_window" para compatibilidade
         tw = order.get("time", order.get("time_window"))
         if isinstance(tw, tuple) and len(tw) == 2:
             start, end = tw
-            # Pedido é valido se a janela dele estiver dentro da janela global
             if time_window[0] <= start and end <= time_window[1]:
-                fifo.put(order)
-            else:
-                # Fora da janela global -> ignora
-                #(se você quiser logar aqui, pode usar logging.warning)
-                pass
+                valid_orders.append(order)
         elif isinstance(tw, (int, float)):
-            # Caso raro: tempo único (instante)
             if time_window[0] <= tw <= time_window[1]:
-                fifo.put(order)
-            else:
-                pass
+                valid_orders.append(order)
         else:
-            # Sem informação de tempo; opcional: aceita ou rejeita
-            fifo.put(order)
+            valid_orders.append(order)  # aceita sem restrição
 
-    route = [0]         # depósito = nó 0
-    current_node = 0
+    if not valid_orders:
+        return {
+            "routes": [],
+            "total_distance": 0.0,
+            "num_vehicles": 0,
+            "unrouted_orders": orders,
+            "route_details": [],
+            "computation_time": time.time() - start_time,
+            "distance_matrix_cache_hit": distance_matrix is not None
+        }
 
-    current_capacity = capacity
+    # -------------------------------
+    # 2. Matriz de distâncias
+    # -------------------------------
+    distance_matrix_cache_hit = True
+    if distance_matrix is None:
+        distance_matrix_cache_hit = False
+        nodes = [depot_node] + [o["node"] for o in valid_orders]
+        distance_matrix = precompute_distances(graph, nodes)
 
-    while not fifo.empty():
-        candidates = []
-        # Coleta todos da fila para filtrar
-        for _ in range(fifo.qsize()):
-            order = fifo.get()
-            if order["weight"] <= current_capacity:
-                candidates.append(order)
+    # -------------------------------
+    # 3. Heurística com Inserção
+    # -------------------------------
+    unrouted = valid_orders.copy()
+    routes = []          # lista de rotas (nós visitados)
+    route_details = []   # informações extras por rota
+
+    while unrouted:
+        # Começa uma nova rota
+        current_route = [depot_node, depot_node]  # [0,0] no início
+        current_capacity = 0
+        route_distance = 0.0
+        served_orders = []
+
+        improved = True
+        while improved and unrouted:
+            best_insertion = None
+            best_increase = float("inf")
+            best_order = None
+
+            # Tenta inserir cada pedido em todas as posições da rota
+            for order in unrouted:
+                if order["weight"] + current_capacity > capacity:
+                    continue  # não cabe nesta rota
+
+                for i in range(1, len(current_route)):
+                    prev_node = current_route[i - 1]
+                    next_node = current_route[i]
+                    insert_node = order["node"]
+
+                    extra_cost = (
+                        distance_matrix[prev_node][insert_node]
+                        + distance_matrix[insert_node][next_node]
+                        - distance_matrix[prev_node][next_node]
+                    )
+
+                    if extra_cost < best_increase:
+                        best_increase = extra_cost
+                        best_insertion = i
+                        best_order = order
+
+            if best_order is not None:
+                # Faz a melhor inserção encontrada
+                current_route.insert(best_insertion, best_order["node"])
+                current_capacity += best_order["weight"]
+                route_distance += best_increase
+                served_orders.append(best_order)
+                unrouted.remove(best_order)
             else:
-                fifo.put(order)  # volta para a fila se não couber agora
+                improved = False  # não há mais inserções possíveis
 
-        if not candidates:
-            break
+        # Calcula distância total da rota (ciclo fechado)
+        route_distance = 0.0
+        for i in range(len(current_route) - 1):
+            route_distance += distance_matrix[current_route[i]][current_route[i + 1]]
 
-        # Escolhe vizinho mais próximo pelo peso da aresta
-        next_order = min(
-            candidates,
-            key=lambda o: nx.shortest_path_length(
-                graph, current_node, o["node"], weight="weight"
-            )
-        )
+        if len(current_route) > 2:  # rota não vazia
+            routes.append(current_route)
+            route_details.append({
+                "route": current_route,
+                "distance": route_distance,
+                "capacity_used": current_capacity,
+                "orders": [o["id"] for o in served_orders]
+            })
 
-        # Atualiza rota
-        route.append(next_order["node"])
-        current_capacity -= next_order["weight"]
-        current_node = next_order["node"]
+    # -------------------------------
+    # 4. Estrutura de saída
+    # -------------------------------
+    total_distance = sum(r["distance"] for r in route_details)
+    result = {
+        "routes": routes,
+        "total_distance": total_distance,
+        "num_vehicles": len(routes),
+        "unrouted_orders": unrouted,
+        "route_details": route_details,
+        "computation_time": time.time() - start_time,
+        "distance_matrix_cache_hit": distance_matrix_cache_hit
+    }
 
-        # Recoloca candidatos restantes na fila
-        for order in candidates:
-            if order["id"] != next_order["id"]:
-                fifo.put(order)
-
-    # Volta para o depósito
-    route.append(0)
-    logging.info("Rota finalizada: %s", route)
-    return route
+    logging.info("VRP finalizado: %d rotas, distância total = %.2f", len(routes), total_distance)
+    return result
