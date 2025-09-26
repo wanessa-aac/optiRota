@@ -28,13 +28,15 @@ class PriorityQueue:
         value = pq.extract_min()  # retorna 20 (menor prioridade)
     """
     
-    def __init__(self):
+    def __init__(self, debug=False):
         """
         Inicializa uma fila de prioridade vazia.
         
         O heap é implementado como uma lista de tuplas (prioridade, valor).
         """
         self.heap = []
+        self.debug = debug
+        self._entry_counter = 0
         logging.info("PriorityQueue inicializada")
     
     def insert(self, value, priority):
@@ -55,14 +57,18 @@ class PriorityQueue:
             raise TypeError(f"Prioridade deve ser numérica, recebido: {type(priority)}")
         
         # Insere tupla (prioridade, valor) no heap
-        heapq.heappush(self.heap, (priority, value))
+        entry = (priority, self._entry_counter, value)
+        heapq.heappush(self.heap, entry)
+        self._entry_counter += 1
         
         # Logging para depuração
-        elapsed = time.time() - start_time
-        logging.info("Inserindo: %s com prioridade %s (tempo: %.6fs)", value, priority, elapsed)
+        if self.debug or (len(self.heap) % 1000 == 0):
+            logging.info("Inserido: %s com prioridade %s (tamanho: %d)", value, priority, len(self.heap))
         
-        # Verifica propriedade de heap após inserção
-        self._verify_heap_property()
+        # Verifica propriedade de heap apenas em debug
+        if self.debug:
+            self._verify_heap_property()
+
     
     def extract_min(self):
         """
@@ -76,21 +82,20 @@ class PriorityQueue:
         Raises:
             IndexError: Se a fila estiver vazia
         """
-        start_time = time.time()
-        
         if not self.heap:
             logging.warning("Tentativa de extract_min em PriorityQueue vazia")
             raise IndexError("extract_min from empty priority queue")
         
         # Extrai o elemento com menor prioridade
-        priority, value = heapq.heappop(self.heap)
+        priority, counter, value = heapq.heappop(self.heap)
         
-        # Logging para depuração
-        elapsed = time.time() - start_time
-        logging.info("Extraindo: %s com prioridade %s (tempo: %.6fs)", value, priority, elapsed)
+        # Logging otimizado
+        if self.debug or (len(self.heap) % 1000 == 0):
+            logging.info("Extraído: %s com prioridade %s (tamanho: %d)", value, priority, len(self.heap))
         
-        # Verifica propriedade de heap após extração
-        self._verify_heap_property()
+        # Verifica propriedade de heap apenas em debug
+        if self.debug:
+            self._verify_heap_property()
         
         return value
     
@@ -103,20 +108,20 @@ class PriorityQueue:
         Este método é chamado internamente quando necessário para garantir
         que a propriedade de heap seja mantida.
         """
-        start_time = time.time()
-        
         if not self.heap:
-            logging.info("Heapify chamado em heap vazio")
+            if self.debug:
+                logging.info("Heapify chamado em heap vazio")
             return
         
         # Reconstrói o heap usando heapq.heapify
         heapq.heapify(self.heap)
         
-        elapsed = time.time() - start_time
-        logging.info("Heapify executado em %d elementos (tempo: %.6fs)", len(self.heap), elapsed)
+        if self.debug:
+            logging.info("Heapify executado em %d elementos", len(self.heap))
+            self._verify_heap_property()
+
         
-        # Verifica propriedade de heap após heapify
-        self._verify_heap_property()
+
     
     def _verify_heap_property(self):
         """
@@ -150,7 +155,7 @@ class PriorityQueue:
             O valor com menor prioridade ou None se a fila estiver vazia
         """
         if self.heap:
-            return self.heap[0][1]  # Retorna o valor (segundo elemento da tupla)
+            return self.heap[0][2]  # Retorna o valor (segundo elemento da tupla)
         return None
     
     def is_empty(self):

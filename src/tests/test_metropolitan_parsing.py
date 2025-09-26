@@ -185,3 +185,4 @@ class TestMetropolitanParsing:
             
         except Exception as e:
             pytest.skip(f"Erro no parsing: {e}")
+

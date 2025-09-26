@@ -272,3 +272,4 @@ class TestMetropolitanConnectivity:
             
         except Exception as e:
             pytest.skip(f"Erro na robustez: {e}")
+

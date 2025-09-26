@@ -1,5 +1,6 @@
 # Arquivos compilados/otimizados (Python/DLL)
 __pycache__/
+**/__pycache__/
 *.py[cod]
 *$py.class
 
@@ -134,25 +135,35 @@ dmypy.json
 # Específico do projeto
 # Arquivos de cache
 cache/
-optiRota/cache/
 *.cache
 
 # Arquivos de log
 logs/
 *.log
 
-# Arquivos de dados (descomente se não quiser versioná-los)
-# data/
-# *.osm
-# *.json
+# Relatórios gerados
+reports/
+*.txt
+*.json
+
+# Scripts de geração de relatórios
+create_final_consolidated_report.py
+create_final_report.py
+generate_benchmark_report.py
+generate_complete_detailed_report.py
+generate_detailed_benchmark_report.py
+generate_pdf_report.py
+run_metropolitan_tests.py
+
+# Arquivos de dados grandes (não versionar)
+data/
+*.osm
+*.osm.pbf
+*.pbf
 data/distances.csv
 
-
-data
-# Dados locais (não versionar OSM bruto nem exportações)
-#data/*.osm
-#data/*.osm.pbf
-#data/graph.json
+# Arquivos temporários do sistema
+.pymon
 
 # Arquivos de IDE
 .vscode/

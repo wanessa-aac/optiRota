@@ -275,3 +275,4 @@ class TestValidationIntegration:
         print(f"  A*: {astar_result['distance']:.2f} km ({len(astar_result['path'])} nós)")
         print(f"  Consistência: {'✅' if abs(dijkstra_result['distance'] - astar_result['distance']) < 1e-9 else '❌'}")
         print(f"  End-to-end: ✅")
+

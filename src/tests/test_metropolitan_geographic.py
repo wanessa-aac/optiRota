@@ -324,3 +324,4 @@ class TestMetropolitanGeographic:
             
         except Exception as e:
             pytest.skip(f"Erro no agrupamento: {e}")
+

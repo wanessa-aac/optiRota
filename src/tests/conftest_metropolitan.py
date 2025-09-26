@@ -256,3 +256,4 @@ def metropolitan_geographic_stats(metropolitan_coordinates):
     }
     
     return stats
+

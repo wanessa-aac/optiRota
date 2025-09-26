@@ -218,3 +218,4 @@ class TestMetropolitanIntegration:
         print(f"  Dijkstra: {dijkstra_result['distance']:.2f} km ({len(dijkstra_result['path'])} nós)")
         print(f"  A*: {astar_result['distance']:.2f} km ({len(astar_result['path'])} nós)")
         print(f"  Diferença: {abs(dijkstra_result['distance'] - astar_result['distance']):.2f} km")
+

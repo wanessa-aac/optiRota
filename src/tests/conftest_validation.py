@@ -374,3 +374,4 @@ def validation_code_metrics():
         }
     
     return metrics
+

@@ -340,3 +340,4 @@ class TestMetropolitanPerformance:
             
         except Exception as e:
             pytest.skip(f"Erro no throughput: {e}")
+

@@ -404,3 +404,4 @@ class TestDataConsistency:
             
         except Exception as e:
             pytest.skip(f"Erro na integridade: {e}")
+

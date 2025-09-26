@@ -1,7 +1,7 @@
 import json
 import networkx as nx
-from algorithms import dijkstra, get_shortest_path_info
-from structures import PriorityQueue, reconstruct_path
+from src.algorithms import dijkstra, get_shortest_path_info
+from src.structures import PriorityQueue, reconstruct_path
 
 def carregar_grafo(json_path="data/graph.json"):
     """Carrega o grafo a partir de graph.json"""
