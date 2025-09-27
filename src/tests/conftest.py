@@ -21,6 +21,26 @@ import networkx as nx
 # garantindo coerência entre pesos das arestas e heurística.
 from src.utils import euclidean_distance, haversine_distance
 
+# Importar fixtures de outros conftest
+try:
+    from .conftest_metropolitan import *
+    from .conftest_performance import *
+    from .conftest_validation import *
+except ImportError:
+    # Fallback para importação absoluta
+    import os
+    import sys
+    current_dir = os.path.dirname(__file__)
+    sys.path.insert(0, current_dir)
+    
+    try:
+        from conftest_metropolitan import *
+        from conftest_performance import *
+        from conftest_validation import *
+    except ImportError:
+        # Se não conseguir importar, continua sem as fixtures extras
+        pass
+
 
 def _add_latlon(G, n, lat, lon):
     """Helper: adiciona um nó com atributos lat/lon (para distâncias e heurísticas)."""

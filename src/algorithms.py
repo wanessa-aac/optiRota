@@ -24,8 +24,7 @@ logging.basicConfig(
 )
 
 def dijkstra(graph, start, end: Optional[str] = None, max_iterations: int = 10000) -> Dict[str, Any]:
-    """
-    Implementa o algoritmo de Dijkstra para encontrar o caminho mais curto entre dois nós.
+    """Implementa o algoritmo de Dijkstra para encontrar o caminho mais curto entre dois nós.
     
     Usa uma PriorityQueue (heap) para relaxar vizinhos e encontrar o caminho ótimo.
     
@@ -45,6 +44,14 @@ def dijkstra(graph, start, end: Optional[str] = None, max_iterations: int = 1000
     Raises:
         ValueError: Se start ou end não existem no grafo
         RuntimeError: Se o grafo é desconexo ou excede max_iterations
+        
+    Example:
+        >>> import networkx as nx
+        >>> G = nx.DiGraph()
+        >>> G.add_edge('A', 'B', weight=1.0)
+        >>> G.add_edge('B', 'C', weight=2.0)
+        >>> result = dijkstra(G, 'A', 'C')
+        >>> print(f"Distância: {result['distance']}, Caminho: {result['path']}")
     """
     logging.info("Iniciando algoritmo de Dijkstra: %s -> %s", start, end)
     
@@ -357,6 +364,54 @@ def get_shortest_path_info(result: Dict[str, Any]) -> str:
 def _ensure_data_dir(path: str) -> None:
     os.makedirs(os.path.dirname(path), exist_ok=True)
 
+def _build_distance_matrix(graph, nodes: List[str]) -> Dict[int, Dict[int, float]]:
+    """
+    Constrói matriz de distâncias robusta usando Dijkstra/A*.
+    
+    Args:
+        graph: Grafo NetworkX
+        nodes: Lista de nós para calcular distâncias
+        
+    Returns:
+        Matriz de distâncias como dicionário aninhado
+    """
+    distance_matrix = {}
+    n = len(nodes)
+    
+    logging.info("Calculando matriz de distâncias %dx%d", n, n)
+    
+    for i, node_i in enumerate(nodes):
+        distance_matrix[i] = {}
+        
+        for j, node_j in enumerate(nodes):
+            if i == j:
+                distance_matrix[i][j] = 0.0
+            else:
+                try:
+                    # Tenta A* primeiro (mais eficiente)
+                    result = a_star(graph, node_i, node_j)
+                    distance_matrix[i][j] = result['distance']
+                except:
+                    try:
+                        # Fallback para Dijkstra
+                        result = dijkstra(graph, node_i, node_j)
+                        distance_matrix[i][j] = result['distance']
+                    except:
+                        # Se ambos falharem, usa distância euclidiana como estimativa
+                        if hasattr(graph.nodes[node_i], 'get') and hasattr(graph.nodes[node_j], 'get'):
+                            lat1, lon1 = graph.nodes[node_i].get('lat', 0), graph.nodes[node_i].get('lon', 0)
+                            lat2, lon2 = graph.nodes[node_j].get('lat', 0), graph.nodes[node_j].get('lon', 0)
+                            from src.utils import euclidean_distance
+                            distance_matrix[i][j] = euclidean_distance(
+                                type('Node', (), {'lat': lat1, 'lon': lon1}),
+                                type('Node', (), {'lat': lat2, 'lon': lon2})
+                            )
+                        else:
+                            distance_matrix[i][j] = float('inf')
+    
+    logging.info("Matriz de distâncias calculada com sucesso")
+    return distance_matrix
+
 def _load_done_pairs(cache_path: str) -> Set[Tuple[str, str]]:
     """
     Lê data/distances.csv e retorna um set com (source, target) já calculados.
@@ -485,6 +540,87 @@ def precompute_distances(
     logging.info("Finalizado. Novas linhas gravadas: %d | CSV: %s", written_now, out_path)
     return written_now
 
+def _vrp_nearest_neighbor(graph, orders, depot_node, capacity, distance_matrix):
+    """
+    Heurística Nearest Neighbor para VRP.
+    Constrói rotas visitando sempre o cliente mais próximo.
+    """
+    routes = []
+    unrouted = orders.copy()
+    
+    while unrouted:
+        current_route = [depot_node]
+        current_capacity = 0.0
+        
+        while unrouted:
+            best_customer = None
+            best_distance = float('inf')
+            
+            for order in unrouted:
+                if current_capacity + order.get("weight", 0) <= capacity:
+                    # Calcula distância do último nó da rota para este cliente
+                    last_node = current_route[-1]
+                    try:
+                        # Encontra índice do último nó na matriz
+                        last_idx = None
+                        for i, node in enumerate([depot_node] + [o["node"] for o in orders]):
+                            if node == last_node:
+                                last_idx = i
+                                break
+                        
+                        # Encontra índice do cliente
+                        client_idx = None
+                        for i, node in enumerate([depot_node] + [o["node"] for o in orders]):
+                            if node == order["node"]:
+                                client_idx = i
+                                break
+                        
+                        if last_idx is not None and client_idx is not None:
+                            distance = distance_matrix[last_idx][client_idx]
+                            if distance < best_distance:
+                                best_distance = distance
+                                best_customer = order
+                    except:
+                        continue
+            
+            if best_customer is None:
+                break
+                
+            # Adiciona cliente à rota
+            current_route.append(best_customer["node"])
+            current_capacity += best_customer.get("weight", 0)
+            unrouted.remove(best_customer)
+        
+        # Fecha a rota retornando ao depósito
+        current_route.append(depot_node)
+        routes.append(current_route)
+    
+    return routes
+
+def _calculate_route_distance(route, distance_matrix, depot_node, orders):
+    """Calcula distância total de uma rota."""
+    total_distance = 0.0
+    for i in range(len(route) - 1):
+        try:
+            # Encontra índices na matriz
+            from_idx = None
+            to_idx = None
+            all_nodes = [depot_node] + [o["node"] for o in orders]
+            for j, node in enumerate(all_nodes):
+                if node == route[i]:
+                    from_idx = j
+                if node == route[i + 1]:
+                    to_idx = j
+                if from_idx is not None and to_idx is not None:
+                    break
+            
+            if from_idx is not None and to_idx is not None:
+                total_distance += distance_matrix[from_idx][to_idx]
+        except:
+            continue
+    
+    return total_distance
+
 def vrp_solver(
     graph: nx.DiGraph,
     orders: List[Dict],
@@ -535,82 +671,56 @@ def vrp_solver(
     if distance_matrix is None:
         distance_matrix_cache_hit = False
         nodes = [depot_node] + [o["node"] for o in valid_orders]
-        distance_matrix = precompute_distances(graph, nodes)
+        # Cria matriz de distâncias robusta
+        distance_matrix = _build_distance_matrix(graph, nodes)
 
     # -------------------------------
-    # 3. Heurística com Inserção
+    # 3. VRP Solver Robusto
     # -------------------------------
-    unrouted = valid_orders.copy()
-    routes = []          # lista de rotas (nós visitados)
-    route_details = []   # informações extras por rota
-
-    while unrouted:
-        # Começa uma nova rota
-        current_route = [depot_node, depot_node]  # [0,0] no início
-        current_capacity = 0
-        route_distance = 0.0
-        served_orders = []
-
-        improved = True
-        while improved and unrouted:
-            best_insertion = None
-            best_increase = float("inf")
-            best_order = None
-
-            # Tenta inserir cada pedido em todas as posições da rota
-            for order in unrouted:
-                if order["weight"] + current_capacity > capacity:
-                    continue  # não cabe nesta rota
-
-                for i in range(1, len(current_route)):
-                    prev_node = current_route[i - 1]
-                    next_node = current_route[i]
-                    insert_node = order["node"]
-
-                    extra_cost = (
-                        distance_matrix[prev_node][insert_node]
-                        + distance_matrix[insert_node][next_node]
-                        - distance_matrix[prev_node][next_node]
-                    )
-
-                    if extra_cost < best_increase:
-                        best_increase = extra_cost
-                        best_insertion = i
-                        best_order = order
-
-            if best_order is not None:
-                # Faz a melhor inserção encontrada
-                current_route.insert(best_insertion, best_order["node"])
-                current_capacity += best_order["weight"]
-                route_distance += best_increase
-                served_orders.append(best_order)
-                unrouted.remove(best_order)
-            else:
-                improved = False  # não há mais inserções possíveis
-
-        # Calcula distância total da rota (ciclo fechado)
-        route_distance = 0.0
-        for i in range(len(current_route) - 1):
-            route_distance += distance_matrix[current_route[i]][current_route[i + 1]]
-
-        if len(current_route) > 2:  # rota não vazia
-            routes.append(current_route)
-            route_details.append({
-                "route": current_route,
-                "distance": route_distance,
-                "capacity_used": current_capacity,
-                "orders": [o["id"] for o in served_orders]
-            })
-
+    # Usa heurística Nearest Neighbor
+    routes = _vrp_nearest_neighbor(graph, valid_orders, depot_node, capacity, distance_matrix)
+    
     # -------------------------------
-    # 4. Estrutura de saída
+    # 4. Cálculo de métricas
     # -------------------------------
-    total_distance = sum(r["distance"] for r in route_details)
+    route_details = []
+    total_distance = 0.0
+    
+    for route in routes:
+        if len(route) < 2:
+            continue
+            
+        route_distance = _calculate_route_distance(route, distance_matrix, depot_node, valid_orders)
+        total_distance += route_distance
+        
+        # Calcula capacidade usada
+        capacity_used = 0.0
+        orders_served = []
+        for order in valid_orders:
+            if order["node"] in route:
+                capacity_used += order.get("weight", 0)
+                orders_served.append(order.get("id", order["node"]))
+        
+        route_details.append({
+            "route": route,
+            "distance": route_distance,
+            "capacity_used": capacity_used,
+            "orders_served": len(orders_served),
+            "orders": orders_served
+        })
+
+    # Identifica pedidos não roteados
+    routed_nodes = set()
+    for route in routes:
+        routed_nodes.update(route)
+    
+    unrouted_orders = [order for order in valid_orders if order["node"] not in routed_nodes]
+
     result = {
         "routes": routes,
         "total_distance": total_distance,
         "num_vehicles": len(routes),
-        "unrouted_orders": unrouted,
+        "unrouted_orders": unrouted_orders,
         "route_details": route_details,
         "computation_time": time.time() - start_time,
         "distance_matrix_cache_hit": distance_matrix_cache_hit

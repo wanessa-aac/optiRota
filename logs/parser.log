@@ -8,3 +8,7 @@
 2025-09-11 15:43:24,681 - INFO - Ways totais: 58062
 2025-09-11 15:43:25,836 - INFO - Grafo fortemente conexo? False
 2025-09-11 15:43:27,690 - INFO - Grafo salvo em data/graph.json com 26963 nós e 55666 arestas
+2025-09-26 20:52:24,492 - INFO - Iniciando parsing de data/090925maceio_ponta_verde.osm
+2025-09-26 20:52:25,625 - INFO - Nodes totais: 27893 | Nodes significativos: 26963
+2025-09-26 20:52:25,625 - INFO - Ways totais: 58062
+2025-09-26 20:52:26,094 - INFO - Não foi possível simplificar com osmnx: module 'osmnx' has no attribute 'utils_graph'

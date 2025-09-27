@@ -15,8 +15,24 @@ def parse_osm(file_path: str):
     """
     Faz parsing de um arquivo .osm/.xml local e retorna nodes significativos e ways.
     
-    Retorna:
-        dict com {'nodes': {id: {...}}, 'ways': [{from, to, highway, oneway, length}]}
+    Esta função processa arquivos OpenStreetMap (OSM) para extrair informações
+    de nós e vias relevantes para construção de grafos de roteamento.
+    
+    Args:
+        file_path (str): Caminho para o arquivo .osm/.xml a ser processado.
+        
+    Returns:
+        dict: Dicionário contendo:
+            - 'nodes': Dicionário com nós {id: {lat, lon, tags}}
+            - 'ways': Lista de vias [{from, to, highway, oneway, length, tags}]
+            
+    Raises:
+        FileNotFoundError: Se o arquivo não for encontrado.
+        ValueError: Se o arquivo não for um XML válido.
+        
+    Example:
+        >>> data = parse_osm("data/map.osm")
+        >>> print(f"Nós: {len(data['nodes'])}, Vias: {len(data['ways'])}")
     """
     if not os.path.exists(file_path):
         logging.error("Arquivo não encontrado: %s", file_path)

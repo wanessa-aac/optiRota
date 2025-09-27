@@ -6,11 +6,19 @@ FASE 4: Testes de Validação
 import pytest
 import ast
 import inspect
+import sys
 from src.algorithms import dijkstra, a_star
 from src.structures import PriorityQueue, Stack, FIFOQueue
 from src.parser_osm import parse_osm
 from src.graph import build_graph
 from src.utils import haversine_distance, euclidean_distance
+
+# Configurar encoding UTF-8 para Windows
+if sys.platform == "win32":
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+    except:
+        pass
 
 class TestCodeQuality:
     """
@@ -60,7 +68,7 @@ class TestCodeQuality:
         print(f"\nDocumentação de código:")
         print(f"  Funções documentadas: {len(functions)}")
         print(f"  Classes documentadas: {len(classes)}")
-        print(f"  Qualidade: ✅")
+        print(f"  Qualidade: OK")
     
     def test_function_signatures(self):
         """
@@ -88,10 +96,10 @@ class TestCodeQuality:
         assert "parsed_data" in build_sig.parameters, "build_graph deve ter parâmetro parsed_data"
         
         print(f"\nAssinaturas de funções:")
-        print(f"  Dijkstra: ✅")
-        print(f"  A*: ✅")
-        print(f"  parse_osm: ✅")
-        print(f"  build_graph: ✅")
+        print(f"  Dijkstra: OK")
+        print(f"  A*: OK")
+        print(f"  parse_osm: OK")
+        print(f"  build_graph: OK")
     
     def test_class_methods(self):
         """
@@ -123,7 +131,7 @@ class TestCodeQuality:
         print(f"  PriorityQueue: {len(pq_methods)} métodos")
         print(f"  Stack: {len(stack_methods)} métodos")
         print(f"  FIFOQueue: {len(fifo_methods)} métodos")
-        print(f"  Completude: ✅")
+        print(f"  Completude: OK")
     
     def test_error_handling(self):
         """
@@ -156,9 +164,9 @@ class TestCodeQuality:
             fifo.dequeue()
         
         print(f"\nTratamento de erros:")
-        print(f"  PriorityQueue: ✅")
-        print(f"  Stack: ✅")
-        print(f"  FIFOQueue: ✅")
+        print(f"  PriorityQueue: OK")
+        print(f"  Stack: OK")
+        print(f"  FIFOQueue: OK")
     
     def test_code_complexity(self):
         """
@@ -193,7 +201,7 @@ class TestCodeQuality:
             lines = source.split('\n')
             non_empty_lines = [line for line in lines if line.strip()]
             print(f"  {func.__name__}: {len(non_empty_lines)} linhas")
-        print(f"  Qualidade: ✅")
+        print(f"  Qualidade: OK")
     
     def test_code_readability(self):
         """
@@ -237,7 +245,7 @@ class TestCodeQuality:
             total_lines = len([line for line in source.split('\n') if line.strip()])
             comment_ratio = len(comment_lines) / total_lines if total_lines > 0 else 0
             print(f"  {func.__name__}: {comment_ratio:.2f} comentários")
-        print(f"  Qualidade: ✅")
+        print(f"  Qualidade: OK")
     
     def test_code_maintainability(self):
         """
@@ -278,7 +286,7 @@ class TestCodeQuality:
             unique_lines = set(lines)
             duplication_ratio = 1 - len(unique_lines) / len(lines) if len(lines) > 0 else 0
             print(f"  {func.__name__}: {duplication_ratio:.2f} duplicação")
-        print(f"  Qualidade: ✅")
+        print(f"  Qualidade: OK")
     
     def test_code_performance(self):
         """
@@ -320,7 +328,7 @@ class TestCodeQuality:
             lines = source.split('\n')
             nested_loops = sum(1 for line in lines if 'for ' in line and 'for ' in line)
             print(f"  {func.__name__}: {nested_loops} loops aninhados")
-        print(f"  Qualidade: ✅")
+        print(f"  Qualidade: OK")
     
     def test_code_security(self):
         """
@@ -352,8 +360,8 @@ class TestCodeQuality:
             assert 'os.system' not in source, f"Função {func.__name__} usa os.system - risco de segurança"
         
         print(f"\nSegurança de código:")
-        print(f"  eval/exec: ✅")
-        print(f"  input: ✅")
-        print(f"  subprocess: ✅")
-        print(f"  os.system: ✅")
-        print(f"  Qualidade: ✅")
+        print(f"  eval/exec: OK")
+        print(f"  input: OK")
+        print(f"  subprocess: OK")
+        print(f"  os.system: OK")
+        print(f"  Qualidade: OK")

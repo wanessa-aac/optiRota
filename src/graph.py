@@ -67,7 +67,30 @@ def simplify_degree2_directed(G: nx.DiGraph) -> nx.DiGraph:
 def build_graph(parsed_data):
     """
     Constrói um grafo direcionado a partir dos dados parseados.
-    Cada aresta recebe o peso calculado pela distância Haversine.
+    
+    Esta função processa dados OSM parseados para criar um grafo NetworkX
+    otimizado para algoritmos de roteamento, com pesos baseados em distâncias
+    geográficas reais.
+    
+    Args:
+        parsed_data (dict): Dados OSM parseados contendo:
+            - 'nodes': Dicionário de nós com coordenadas lat/lon
+            - 'ways': Lista de vias com informações de conectividade
+            
+    Returns:
+        nx.DiGraph: Grafo direcionado com:
+            - Nós: Cruzamentos com atributos lat/lon
+            - Arestas: Vias com pesos Haversine
+            - Simplificado: Remove nós intermediários de grau 2
+            
+    Raises:
+        ValueError: Se os dados parseados são inválidos.
+        KeyError: Se estrutura de dados está incompleta.
+        
+    Example:
+        >>> data = parse_osm("map.osm")
+        >>> G = build_graph(data)
+        >>> print(f"Grafo: {G.number_of_nodes()} nós, {G.number_of_edges()} arestas")
     """
     G = nx.DiGraph()
 
@@ -103,24 +126,22 @@ def build_graph(parsed_data):
         if not oneway:
             G.add_edge(v, u, weight=dist, highway=tags.get("highway"))
 
-         # Simplifica o grafo removendo nós intermediários de grau 2
-        try:
-            import osmnx as ox
-            G = ox.utils_graph.simplify_graph(G)
-        except Exception as e:
-            import logging
-            logging.info(f"Não foi possível simplificar com osmnx: {e}")
+    # Simplifica o grafo removendo nós intermediários de grau 2
+    try:
+        import osmnx as ox
+        G = ox.utils_graph.simplify_graph(G)
+    except Exception as e:
+        import logging
+        logging.info(f"Não foi possível simplificar com osmnx: {e}")
 
-        # 1) simplificação manual de nós grau-2
-        G = simplify_degree2_directed(G)
+    # 1) simplificação manual de nós grau-2
+    G = simplify_degree2_directed(G)
 
-        # 2) manter só o maior componente fracamente conexo (remove isolados)
-        if G.number_of_nodes() > 0:
-            wccs = list(nx.weakly_connected_components(G))
-            giant = max(wccs, key=len)
-            G = G.subgraph(giant).copy()
-
-
+    # 2) manter só o maior componente fracamente conexo (remove isolados)
+    if G.number_of_nodes() > 0:
+        wccs = list(nx.weakly_connected_components(G))
+        giant = max(wccs, key=len)
+        G = G.subgraph(giant).copy()
 
     return G
 

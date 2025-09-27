@@ -31,7 +31,12 @@ def test_insert_invalid_priority_type():
 
 def test_heapify_restores_property():
     pq = PriorityQueue()
-    pq.heap = [(3, "A"), (1, "B"), (2, "C")]  # bagunçado
+    # Usar insert para criar o heap corretamente
+    pq.insert("A", 3)
+    pq.insert("B", 1)
+    pq.insert("C", 2)
+    # Agora bagunçar manualmente
+    pq.heap = [(3, 0, "A"), (1, 1, "B"), (2, 2, "C")]  # formato correto
     pq.heapify()
     assert pq.extract_min() == "B"
     assert pq.extract_min() == "C"

@@ -200,10 +200,25 @@ class Stack(Generic[T]):
         logging.info("Stack inicializada")
 
     def push(self, value: T) -> None:
+        """
+        Adiciona um elemento no topo da stack.
+        
+        Args:
+            value (T): Elemento a ser adicionado.
+        """
         self._data.append(value)
         logging.debug("Stack.push: %s (tam=%d)", value, len(self._data))
 
     def pop(self) -> T:
+        """
+        Remove e retorna o elemento no topo da stack.
+        
+        Returns:
+            T: Elemento removido do topo da stack.
+            
+        Raises:
+            IndexError: Se a stack estiver vazia.
+        """
         if not self._data:
             logging.warning("Tentativa de pop em Stack vazia")
             raise IndexError("pop from empty stack")
@@ -212,14 +227,32 @@ class Stack(Generic[T]):
         return value
 
     def peek(self) -> Optional[T]:
+        """
+        Retorna o elemento no topo da stack sem removê-lo.
+        
+        Returns:
+            Optional[T]: O elemento no topo da stack, ou None se estiver vazia.
+        """
         if not self._data:
             return None
         return self._data[-1]
 
     def is_empty(self) -> bool:
+        """
+        Verifica se a stack está vazia.
+        
+        Returns:
+            bool: True se a stack estiver vazia, False caso contrário.
+        """
         return len(self._data) == 0
 
     def size(self) -> int:
+        """
+        Retorna o número de elementos na stack.
+        
+        Returns:
+            int: Número de elementos na stack.
+        """
         return len(self._data)
 
     def __repr__(self) -> str:
